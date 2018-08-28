@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+	<Appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout pattern="%d{HH:mm:ss.SSS} [%thread] %-5level %c{1}.%M\(%line\) - %msg%n" />
+		</Console>
+		<File name="MyFile" fileName="all.log" immediateFlush="false" append="false">
+			<PatternLayout
+				pattern="%d{HH:mm:ss.SSS} [%thread] %-5level %c{1}.%M\(%line\) - %msg%n" />
+		</File>
+	</Appenders>
+	<Loggers>
+	 	<logger name="org.apache.storm" level="OFF"/>
+ 		<logger name="org.apache.zookeeper" level="OFF"/>
+	
+		<logger name="gr.uoa.di.madgik.panagiotisl" level="DEBUG"/>
+		
+		<Root level="INFO">
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="MyFile" />
+		</Root>
+	</Loggers>
+</Configuration>
