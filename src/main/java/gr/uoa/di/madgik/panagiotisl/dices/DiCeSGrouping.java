@@ -16,7 +16,6 @@ public class DiCeSGrouping implements CustomStreamGrouping, Serializable {
 
 	private static final long serialVersionUID = -829509041881995910L;
 	
-	private Random random;
     private ArrayList<List<Integer>> choices;
     private AtomicInteger current;
     private List<Integer> all;
@@ -27,8 +26,8 @@ public class DiCeSGrouping implements CustomStreamGrouping, Serializable {
         all = new ArrayList<>(targetTasks);
         Collections.sort(all);
     	
-        random = new Random();
-        choices = new ArrayList<List<Integer>>(targetTasks.size());
+        Random random = new Random();
+        choices = new ArrayList<>(targetTasks.size());
         for (Integer i: targetTasks) {
             choices.add(Arrays.asList(i));
         }

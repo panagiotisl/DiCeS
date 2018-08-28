@@ -80,11 +80,11 @@ public class DiCeSSpout extends BaseRichSpout {
 					String[] comm = commLine.trim().split(DiCeS.GROUND_TRUTH_FILE_DELIMITER);
 					Set<Integer> randomNumbers = DiCeS.getRandomNumbers(comm.length, DiCeS.NUMBER_OF_SEEDS);
 
-					HashSet<String> set = new HashSet<String>();
+					HashSet<String> set = new HashSet<>();
 					for (int number : randomNumbers) {
 						set.add(comm[number]);
 					}
-					redisCommunities.add(new RedisCommunity(count++, sync, async, set, comm));
+					redisCommunities.add(new RedisCommunity(count++, sync, set, comm));
 				}
 				gtcFileBR.close();
 				LOGGER.info(String.format("%d communities initialized...", redisCommunities.size()));

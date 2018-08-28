@@ -15,26 +15,26 @@ public class RedisCommunity implements Serializable {
 
 	private static final long serialVersionUID = 8941749640675016290L;
 
-	public Set<String> seedSet;
+	private Set<String> seedSet;
 	private String[] groundTruth;
 	private String id;
 	private int intId;
 	
-	public RedisCommunity(int id, RedisAdvancedClusterCommands<String, String> redisConn, RedisAdvancedClusterAsyncCommands<String, String> redisAsyncConn, Set<String> seedSet){
-		this(id, redisConn, redisAsyncConn, seedSet, null);
+	public RedisCommunity(int id, RedisAdvancedClusterCommands<String, String> redisConn, Set<String> seedSet){
+		this(id, redisConn, seedSet, null);
 	}
 	
-	public RedisCommunity(int id, RedisAdvancedClusterCommands<String, String> sync, RedisAdvancedClusterAsyncCommands<String, String> async, Set<String> seedSet, String[] groundTruh){
+	public RedisCommunity(int id, RedisAdvancedClusterCommands<String, String> sync, Set<String> seedSet, String[] groundTruh){
 		this.intId = id;
 		this.id = String.format("RC%d", id);
 		if(sync == null)
 			throw new IllegalArgumentException();
 		if(seedSet == null)
 			throw new IllegalArgumentException();
-		this.seedSet = new HashSet<String>();
-		seedSet.forEach(seed -> { this.seedSet.add(seed); });
-		seedSet.forEach((seed)->{ sync.zadd(this.id, 1D, seed); });
-		seedSet.forEach((seed)-> { sync.sadd(String.format("C%s", seed), this.id); });
+		this.seedSet = new HashSet<>();
+		seedSet.forEach(seed -> this.seedSet.add(seed));
+		seedSet.forEach(seed-> sync.zadd(this.id, 1D, seed));
+		seedSet.forEach(seed-> sync.sadd(String.format("C%s", seed), this.id));
 		this.groundTruth = groundTruh;
 	}
 
@@ -69,16 +69,12 @@ public class RedisCommunity implements Serializable {
 	
 	public long pruneCommunity(int size, RedisAdvancedClusterCommands<String, String> redisConn, RedisAdvancedClusterAsyncCommands<String, String> redisAsyncConn) {
 		long start = System.nanoTime();
-		List<String> toBeRemoved = redisConn.zrevrange(id, DiCeS.MAX_COMMUNITY_SIZE, Long.MAX_VALUE);
+		List<String> toBeRemoved = redisConn.zrevrange(id, size, Long.MAX_VALUE);
 		if (!toBeRemoved.isEmpty()) {
 			redisAsyncConn.zremrangebyscore(id, 0D, redisConn.zscore(id, toBeRemoved.get(0)));	
 		}
-		this.seedSet.forEach((seed)->{
-			redisAsyncConn.zadd(id, 1D, seed);
-		});
-		toBeRemoved.forEach((node -> {
-			redisAsyncConn.srem(String.format("C%s", node), id);
-		}));
+		this.seedSet.forEach(seed -> redisAsyncConn.zadd(id, 1D, seed));
+		toBeRemoved.forEach((node -> redisAsyncConn.srem(String.format("C%s", node), id)));
 		return System.nanoTime() - start;
 	}
 	

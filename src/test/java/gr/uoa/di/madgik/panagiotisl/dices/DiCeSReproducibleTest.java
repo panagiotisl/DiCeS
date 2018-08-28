@@ -3,6 +3,7 @@ package gr.uoa.di.madgik.panagiotisl.dices;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import net.ishiis.redis.unit.RedisCluster;
 
@@ -34,6 +35,7 @@ public class DiCeSReproducibleTest {
 		
 		dices = new DiCeS();
 		dices.setBolts(4);
+		dices.setSizeDetermination(DiCeS.SizeDetermination.DROP_TAIL);
 		dices.setInputEdgeList(Resources.getResource("amazon.txt").getFile());
 		dices.setInputEdgeListDelimiter(" ");
 		dices.setInputGroundTruthCommunities(Resources.getResource("amazonGTC.txt").getFile());
@@ -45,13 +47,11 @@ public class DiCeSReproducibleTest {
 	@Test
 	public void shouldAchieveAppropriateF1ScoreForAmazonNetwork() throws IOException, AlreadyAliveException, InvalidTopologyException, AuthorizationException, InterruptedException {
 
-		dices.setSizeDetermination(DiCeS.SizeDetermination.DROP_TAIL);
-		
 		long startTime = System.nanoTime();
 		dices.execute(null);
 		
 		while (PruningBolt.f1score <= 0) {
-			Thread.sleep(100);	
+			TimeUnit.MILLISECONDS.sleep(100);
 		}
 		long estimatedTime = System.nanoTime() - startTime;
 		
@@ -64,8 +64,11 @@ public class DiCeSReproducibleTest {
 	}
 	
 	@After
-	public void cleanUp() {
+	public void cleanUp() throws InterruptedException {
+		// re-initialize the f1score variable that acts as a flag for termination
 		PruningBolt.f1score = 0;
+		
+		// stop the cluster
 		LOGGER.info("Stopping redis cluster...");
 		cluster.stop();
 	}

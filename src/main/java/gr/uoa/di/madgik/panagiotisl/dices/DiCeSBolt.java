@@ -32,8 +32,8 @@ public class DiCeSBolt extends BaseBasicBolt {
 	
 	public static final String COMMUNITY_DEGREES_SUM = "COMMUNITY_DEGREES_SUM";
 	
-	RedisAdvancedClusterAsyncCommands<String, String> async;
-	RedisAdvancedClusterCommands<String, String> sync;
+	private transient RedisAdvancedClusterAsyncCommands<String, String> async;
+	private transient RedisAdvancedClusterCommands<String, String> sync;
 	private List<RedisCommunity> redisCommunities;
 
 	@Override
@@ -47,7 +47,7 @@ public class DiCeSBolt extends BaseBasicBolt {
 			}
 			
 			if (!input.getString(0).equals(DiCeSSpout.END)) {
-				String nodes[] = input.getString(0).split(DiCeS.GRAPH_FILE_DELIMITER);
+				String[] nodes = input.getString(0).split(DiCeS.GRAPH_FILE_DELIMITER);
 				// do not allow self loops
 				if (nodes[0].equals(nodes[1]))
 					return;

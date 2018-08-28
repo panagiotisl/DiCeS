@@ -28,7 +28,7 @@ public class DiCeS {
 
 	private static final Logger LOGGER = Logger.getLogger(DiCeS.class);
 	
-	public static int BOLTS = 4;
+	public static int BOLTS;
 	
 	public static String REDIS_CONNECTION;
 	
@@ -41,10 +41,12 @@ public class DiCeS {
 	public static String GRAPH_FILE_DELIMITER = " ";
 	
 	public static String GROUND_TRUTH_FILE_DELIMITER = " ";
+	
+	public static final boolean DECAY_FACTOR = false;
 
 	public enum SizeDetermination {
 		GROUND_TRUTH, DROP_TAIL
-	};
+	}
 
 	public static final int MAX_COMMUNITY_SIZE = 100;
 	private static final Random RANDOM = new Random(23);
@@ -97,7 +99,7 @@ public class DiCeS {
 			throw new IllegalArgumentException("Can't ask for more numbers than are available");
 		}
 		// Note: use LinkedHashSet to maintain insertion order
-		Set<Integer> generated = new LinkedHashSet<Integer>();
+		Set<Integer> generated = new LinkedHashSet<>();
 		while (generated.size() < numbersNeeded) {
 			Integer next = RANDOM.nextInt(max);
 			// As we're adding to a set, this will automatically do a containment check
@@ -134,9 +136,12 @@ public class DiCeS {
 			}
 			previous = entry.getValue();
 		}
-		double meanDifference = totalDifference / totalDifferenceCount;
+		
+		double meanDifference = 0D;
+		if (totalDifferenceCount != 0) {
+			meanDifference = totalDifference / totalDifferenceCount;			
+		}
 
-		// TODO redis can do it as well
 		List<Entry<String, Double>> reverseSortedCommunity = community.getSortedCommunity(redisConn);
 		Collections.reverse(reverseSortedCommunity);
 		previous = null;
@@ -163,21 +168,19 @@ public class DiCeS {
 		return f1score;
 	}
 
-	private static double getPrecision(Set<String> found, Set<String> gtc,
-			SetView<String> common) {
+	private static double getPrecision(Set<String> found, SetView<String> common) {
 		return (double) common.size() / found.size();
 	}
 
-	private static double getRecall(Set<String> found, Set<String> gtc,
-			SetView<String> common) {
+	private static double getRecall(Set<String> gtc, SetView<String> common) {
 		return (double) common.size() / gtc.size();
 	}
 
 	private static double getF1Score(Set<String> found, String[] comm) {
-		HashSet<String> gtc = new HashSet<String>(Arrays.asList(comm));
+		HashSet<String> gtc = new HashSet<>(Arrays.asList(comm));
 		SetView<String> common = Sets.intersection(found, gtc);
-		double precision = getPrecision(found, gtc, common);
-		double recall = getRecall(found, gtc, common);
+		double precision = getPrecision(found, common);
+		double recall = getRecall(gtc, common);
 		if (precision == 0 && recall == 0)
 			return 0;
 		else
@@ -187,7 +190,10 @@ public class DiCeS {
 	public static void addToDegreeRedis(String[] nodes, RedisAdvancedClusterAsyncCommands<String, String> redisConnection) {
 		redisConnection.incr(nodes[0]);
 		redisConnection.incr(nodes[1]);
-		redisConnection.incrby(DiCeSBolt.DEGREES_SUM, 2L);
+		if (DECAY_FACTOR) {
+			redisConnection.incrby(DiCeSBolt.DEGREES_SUM, 2L);			
+		}
+
 	}
 	
 
@@ -201,7 +207,7 @@ public class DiCeS {
 		Set<String> set1 = redisConnection.smembers(String.format(NODE_COMMUNITIES_PREFIX, nodes[1]));
 		Set<String> validCommunities = Sets.union(set0, set1);
 		for (String communityIndex : validCommunities) {
-			int i = Integer.valueOf(communityIndex.substring(2));
+			int i = Integer.parseInt(communityIndex.substring(2));
 			Double scoreNode0 = null;
 			Double scoreNode1 = null;
 			boolean commContainsNode0 = false;
@@ -209,26 +215,26 @@ public class DiCeS {
 			
 			double commDegreeSum = 0D;
 			double degreeSum = 0D;
-			
-//			String commDegreeSumString = redisConnection.get(DiCeSBolt.COMMUNITY_DEGREES_SUM);
-//			String degreeSumString = redisConnection.get(DiCeSBolt.DEGREES_SUM);
-//			if (commDegreeSumString != null) {
-//				commDegreeSum = Double.parseDouble(commDegreeSumString) / 150_000;
-//			}
-//			if (degreeSumString != null) {
-//				degreeSum = Double.parseDouble(degreeSumString) / 150_000;
-//			}
+
+			if (DECAY_FACTOR) {
+				String commDegreeSumString = redisConnection.get(DiCeSBolt.COMMUNITY_DEGREES_SUM);
+				String degreeSumString = redisConnection.get(DiCeSBolt.DEGREES_SUM);
+				if (commDegreeSumString != null) {
+					commDegreeSum = Double.parseDouble(commDegreeSumString) / 150_000;
+				}
+				if (degreeSumString != null) {
+					degreeSum = Double.parseDouble(degreeSumString) / 150_000;
+				}	
+			}
 			
 			RedisCommunity comm = communities.get(i);
 			if (set0.contains(communityIndex)) {
 				scoreNode0 = comm.getScore(nodes[0], redisConnection);
-//				LOGGER.warn("scorenode0: " + scoreNode0);
 				commContainsNode0 = scoreNode0 != null;
 			}
 			if (set1.contains(communityIndex)) {
 				scoreNode1 = comm.getScore(nodes[1], redisConnection);
 				commContainsNode1 = scoreNode1 != null;
-//				LOGGER.warn("scorenode1: " + scoreNode1);
 			}
 			
 			// if adjacent node is a seed, add 1

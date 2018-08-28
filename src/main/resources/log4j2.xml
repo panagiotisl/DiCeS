@@ -12,7 +12,8 @@
 	<Loggers>
 	 	<logger name="org.apache.storm" level="OFF"/>
  		<logger name="org.apache.zookeeper" level="OFF"/>
-	
+ 		<logger name="io.lettuce.core.protocol" level="OFF"/>
+ 		
 		<logger name="gr.uoa.di.madgik.panagiotisl" level="DEBUG"/>
 		
 		<Root level="INFO">

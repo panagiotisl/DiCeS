@@ -19,7 +19,7 @@ public class PruningBolt extends BaseBasicBolt {
 
 	private static final long serialVersionUID = -4482496627316555773L;
 
-	private static Logger LOGGER = Logger.getLogger(PruningBolt.class);
+	private static final Logger LOGGER = Logger.getLogger(PruningBolt.class);
 	
 	private int endCounter = 0;
 	
@@ -27,8 +27,8 @@ public class PruningBolt extends BaseBasicBolt {
 
 	private List<RedisCommunity> redisCommunities;
 	
-	private RedisAdvancedClusterAsyncCommands<String, String> async;
-	private RedisAdvancedClusterCommands<String, String> sync;
+	private transient RedisAdvancedClusterAsyncCommands<String, String> async;
+	private transient RedisAdvancedClusterCommands<String, String> sync;
 	
 	public static double f1score;
 	
@@ -75,7 +75,7 @@ public class PruningBolt extends BaseBasicBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		
+		/* no output fields to declare*/
 	}
 	
 	@Override
