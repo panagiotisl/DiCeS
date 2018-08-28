@@ -58,7 +58,7 @@ public class DiCeSReproducibleTest {
 		// F1 score should be around 0.81
 		assertEquals(0.81, PruningBolt.f1score, 0.03);
 		
-		LOGGER.info("Time per edge: " + estimatedTime);
+		// divide by number of edges and convert to microseconds
 		LOGGER.info("Time per edge: " + estimatedTime / (925_872 * 1_000)  + " microseconds");  
 		
 	}
