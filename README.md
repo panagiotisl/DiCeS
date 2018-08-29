@@ -5,7 +5,7 @@ Code and reproducible tests executing DiCeS against the ground-truth communities
 Execute:
 
 ```
-mvn clean install
+mvn test
 ```
 
 ### Who do I talk to? ###
