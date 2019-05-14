@@ -3,6 +3,11 @@ package gr.uoa.di.madgik.panagiotisl.dices;
 import io.lettuce.core.cluster.api.async.RedisAdvancedClusterAsyncCommands;
 import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -21,6 +26,7 @@ import org.apache.storm.generated.AuthorizationException;
 import org.apache.storm.generated.InvalidTopologyException;
 import org.apache.storm.topology.TopologyBuilder;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
 
@@ -28,7 +34,7 @@ public class DiCeS {
 
 	private static final Logger LOGGER = Logger.getLogger(DiCeS.class);
 	
-	public static int BOLTS;
+	public static int BOLTS = 4;
 	
 	public static String REDIS_CONNECTION;
 	
@@ -318,5 +324,38 @@ public class DiCeS {
 	public void setBolts(int bolts) {
 		BOLTS = bolts;
 	}
+	
+	/**
+     * Serializes an object to a byte array.
+     * Declared here because SerializationUtils does not work with OSGI
+     *
+     * @param obj the object to be serialized
+     * */
+    public static byte[] serialize(Object obj) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(out);
+            os.writeObject(obj);
+            return out.toByteArray();
+        } catch (IOException e) {
+            LOGGER.warn("IO exception while serializing", e);
+            return new byte[0];
+        }
+    }
+    
+    public static Object deserialize(byte[] data) {
+        try {
+            ByteArrayInputStream in = new ByteArrayInputStream(data);
+            ObjectInputStream is = new ObjectInputStream(in);
+            return is.readObject();
+        } catch (ClassNotFoundException e) {
+            LOGGER.warn("Class not found while deserializing", e);
+        } catch (IOException e) {
+            LOGGER.warn("IO exception while deserializing", e);
+        }
+        return null;
+    }
+
+
 	
 }

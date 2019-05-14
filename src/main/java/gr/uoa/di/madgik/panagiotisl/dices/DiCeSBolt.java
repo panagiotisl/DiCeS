@@ -6,6 +6,7 @@ import io.lettuce.core.cluster.api.async.RedisAdvancedClusterAsyncCommands;
 import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +37,8 @@ public class DiCeSBolt extends BaseBasicBolt {
 	private transient RedisAdvancedClusterCommands<String, String> sync;
 	private List<RedisCommunity> redisCommunities;
 
+	private Long messageId = 0L;
+	
 	@Override
 	public void execute(Tuple input, BasicOutputCollector collector) {
 		try {
@@ -77,7 +80,14 @@ public class DiCeSBolt extends BaseBasicBolt {
 		async = connection.async();
 		sync = connection.sync();
 
-		redisCommunities = new ArrayList<>();
+		String communities = sync.get(DiCeSSpout.COMMUNITIES);
+		if (communities != null && !communities.isEmpty()) {
+			redisCommunities = (List<RedisCommunity>) DiCeS.deserialize(Base64.getDecoder().decode(communities));
+			LOGGER.info(String.format("Retrieved %d communities", redisCommunities.size()));
+		} else {
+			redisCommunities = new ArrayList<>();
+			LOGGER.info("Initialized empty communities' list");
+		}
 		
 		LOGGER.info("Bolt initialized...");
 	}

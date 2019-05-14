@@ -10,9 +10,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.log4j.Logger;
 import org.apache.storm.spout.SpoutOutputCollector;
@@ -46,11 +49,16 @@ public class DiCeSSpout extends BaseRichSpout {
 	
 	private boolean initialized = false;
 
-	private long messageId = 0L;
+	RedisAdvancedClusterAsyncCommands<String, String> async;
 	
 	@Override
 	public void open(Map conf, TopologyContext context,
 			SpoutOutputCollector collector) {
+		
+		RedisClusterClient client = RedisClusterClient.create(DiCeS.REDIS_CONNECTION + ":" + DiCeS.REDIS_PORTS.get(0));
+		StatefulRedisClusterConnection<String, String> connection = client.connect();
+		RedisAdvancedClusterCommands<String, String> sync = connection.sync();
+		async = connection.async();
 		
 		_collector = collector;
 		
@@ -58,7 +66,7 @@ public class DiCeSSpout extends BaseRichSpout {
 			File f = new File(DiCeS.GRAPH_FILE);
 			br = new BufferedReader(new FileReader(f));
 		} catch (IOException e) {
-			LOGGER.error(e);
+			LOGGER.error(DiCeS.GRAPH_FILE, e);
 		}
 	}
 
@@ -87,6 +95,7 @@ public class DiCeSSpout extends BaseRichSpout {
 					redisCommunities.add(new RedisCommunity(count++, sync, set, comm));
 				}
 				gtcFileBR.close();
+				sync.set(COMMUNITIES, Base64.getEncoder().encodeToString(DiCeS.serialize(redisCommunities)));
 				LOGGER.info(String.format("%d communities initialized...", redisCommunities.size()));
 			} catch (IOException e) {
 				LOGGER.error(e.getMessage(), e);
@@ -105,7 +114,9 @@ public class DiCeSSpout extends BaseRichSpout {
 		if (active) {
 			try {
 				if ((readLine = br.readLine()) != null) {
-					_collector.emit(new Values(readLine, null), messageId ++);
+					String id = UUID.randomUUID().toString();
+					async.setex(id, 200, readLine);
+					_collector.emit(new Values(readLine, null), id);
 				} else {
 					active = false;
 					br.close();
@@ -120,6 +131,21 @@ public class DiCeSSpout extends BaseRichSpout {
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		declarer.declare(new Fields("first", "second"));
+	}
+	
+	@Override
+	public void fail(Object msgId) {
+		try {
+			String line = async.get(msgId.toString()).get();
+			LOGGER.info("Resending " + line);
+			String id = UUID.randomUUID().toString();
+			async.setex(id, 200, line);
+			_collector.emit(new Values(line, null), id);
+		} catch (InterruptedException e) {
+			LOGGER.error(e);
+		} catch (ExecutionException e) {
+			LOGGER.error(e);
+		}
 	}
 
 }
